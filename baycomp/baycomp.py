@@ -31,20 +31,19 @@ def requires(module, library):
     return wrapper
 
 
-def _compute_posterior_t_parameters(x, y=None, runs=1):
+def _compute_posterior_t_parameters(x, y, runs=1):
     if not int(runs) == runs > 0:
         raise ValueError('Number of runs must be a positive integer')
-    if y is not None:
-        x = y - x
-    n = len(x)
+    diff = y - x
+    n = len(diff)
     nfolds = n / runs
-    mean = np.mean(x)
-    var = np.var(x, ddof=1)
+    mean = np.mean(diff)
+    var = np.var(diff, ddof=1)
     var *= 1 / n + 1 / (nfolds - 1)  # Nadeau-Bengio's correction
     return mean, var, n - 1
 
 
-def correlated_t(x, y=None, rope=0, runs=1):
+def correlated_t(x, y, rope=0, runs=1):
     """
     Compute correlated t-test
 
@@ -64,9 +63,8 @@ def correlated_t(x, y=None, rope=0, runs=1):
     C. Nadeau and Y. Bengio, Mach Learning 2003.).
 
     Args:
-        x (np.array): a vector of scores for the first model, or differences
-        y (np.array): a vector of scores for the second model; if `None`,
-            `x` contains differences between the models
+        x (np.array): a vector of scores for the first model
+        y (np.array): a vector of scores for the second model
         rope (float): the width of the rope (default: 0)
         runs (int): number of repetitions of cross validation (default: 1)
 
@@ -84,16 +82,15 @@ def correlated_t(x, y=None, rope=0, runs=1):
 
 
 @requires(plt, "matplotlib")
-def plot_posterior_t(x, y=None, rope=0.1, runs=1, names=None):
+def plot_posterior_t(x, y, rope=0.1, runs=1, names=None):
     """
     Plot posterior distribution and rope intervals for correlated t-test
 
     See documentation for function :obj:`correlated_t` for details.
 
     Args:
-        x (np.array): a vector of scores for the first model, or differences
-        y (np.array): a vector of scores for the second model; if `None`,
-            `x` contains differences between the models
+        x (np.array): a vector of scores for the first model
+        y (np.array): a vector of scores for the second model
         rope (float): the width of the rope (default: 0)
         runs (int): number of repetitions of cross validation (default: 1)
         names (pair of str): the names of the two classifiers (default: None,
@@ -102,16 +99,12 @@ def plot_posterior_t(x, y=None, rope=0.1, runs=1, names=None):
     Returns:
         matplotlib.pyplot.figure
     """
-    if names is not None:
-        if y is None:
-            raise ValueError("argument 'names' requires separate 'x' and 'y'")
-        x_label = "difference ({}: {:.3f}, {}: {:.3f})".format(
-            names[0], np.mean(x), names[1], np.mean(y))
-    else:
-        x_label = "difference"
-
     fig, ax = plt.subplots()
     ax.grid(True)
+    x_label = "difference"
+    if names is not None:
+        x_label += " ({}: {:.3f}, {}: {:.3f})".format(
+            names[0], np.mean(x), names[1], np.mean(y))
     ax.set_xlabel(x_label)
     ax.get_yaxis().set_ticklabels([])
     ax.axvline(x=-rope, color="#ffad2f", linewidth=2, label="rope")
@@ -131,12 +124,11 @@ def plot_posterior_t(x, y=None, rope=0.1, runs=1, names=None):
 
 LEFT, ROPE, RIGHT = range(3)
 
-def monte_carlo_samples(x, y=None, rope=0, prior=1, nsamples=50000):
+def monte_carlo_samples(x, y, rope=0, prior=1, nsamples=50000):
     """
     Args:
-        x (np.array): a vector of scores for the first model, or differences
-        y (np.array): a vector of scores for the second model; if `None`,
-            `x` contains differences between the models
+        x (np.array): a vector of scores for the first model
+        y (np.array): a vector of scores for the second model
         rope (float): the width of the rope (default: 0)
         prior (float or tuple): prior strength, or tuple with strength and
             place (`LEFT`, `ROPE` or `RIGHT`); (default: 1)
@@ -156,24 +148,22 @@ def monte_carlo_samples(x, y=None, rope=0, prior=1, nsamples=50000):
         raise ValueError('Number of samples must be a positive integer')
     if rope < 0:
         raise ValueError('Rope width cannot be negative')
-    if y is not None:
-        x = y - x
 
-    nleft = sum(x < -rope)
-    nright = sum(x > rope)
-    nrope = len(x) - nleft - nright
+    diff = y - x
+    nleft = sum(diff < -rope)
+    nright = sum(diff > rope)
+    nrope = len(diff) - nleft - nright
     alpha = np.array([nleft, nrope, nright], dtype=float)
     alpha += 0.0001  # for numerical stability
     alpha[prior_place] += prior
     return np.random.dirichlet(alpha, nsamples)  # pylint: disable=no-member
 
 
-def signtest(x, y=None, rope=0, prior=1, nsamples=50000):
+def signtest(x, y, rope=0, prior=1, nsamples=50000):
     """
     Args:
-        x (np.array): a vector of scores for the first model, or differences
-        y (np.array): a vector of scores for the second model; if `None`,
-            `x` contains differences between the models
+        x (np.array): a vector of scores for the first model
+        y (np.array): a vector of scores for the second model
         rope (float): the width of the rope (default: 0)
         prior (float or tuple): prior strength, or tuple with strength and
             place (`LEFT`, `ROPE` or `RIGHT`); (default: 1)
@@ -193,13 +183,12 @@ def signtest(x, y=None, rope=0, prior=1, nsamples=50000):
 
 
 @requires(plt, "matplotlib")
-def plot_posterior_sign(x, y=None, rope=0, prior=1, nsamples=50000,
+def plot_posterior_sign(x, y, rope=0, prior=1, nsamples=50000,
                         names=('C1', 'C2')):
     """
     Args:
-        x (np.array): a vector of scores for the first model, or differences
-        y (np.array): a vector of scores for the second model; if `None`,
-            `x` contains differences between the models
+        x (np.array): a vector of scores for the first model
+        y (np.array): a vector of scores for the second model
         rope (float): the width of the rope (default: 0)
         prior (float or tuple): prior strength, or tuple with strength and
             place (`LEFT`, `ROPE` or `RIGHT`); (default: 1)
