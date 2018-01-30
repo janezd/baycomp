@@ -1,4 +1,6 @@
+import os
 from functools import lru_cache
+
 import numpy as np
 
 
@@ -7,7 +9,8 @@ def _read_data():
     data = []
     datasets = []
     classifiers = []
-    with open("accuracies.txt") as f:
+    basedir = os.path.split(__file__)[0]
+    with open(os.path.join(basedir, "accuracies.txt")) as f:
         classifier = f.readline().strip()
         while True:  # loop over classifier
             if not classifier:
