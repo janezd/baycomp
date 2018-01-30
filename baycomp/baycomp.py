@@ -15,7 +15,7 @@ except ImportError:
 
 
 __all__ = ["two_on_single", "two_on_multiple",
-           "signtest", "plot_posterior_sign", "plot_simplex",
+           "signtest", "signranktest", "plot_posterior_sign", "plot_simplex",
            "correlated_t", "plot_posterior_t",
            "LEFT", "ROPE", "RIGHT"]
 
@@ -182,6 +182,54 @@ def signtest(x, y, rope=0, prior=1, nsamples=50000):
     return pl, pe, pr
 
 
+def heaviside(a, thresh):
+    return (a > thresh).astype(float) + (a == thresh).astype(float) * 0.5
+
+
+def signranktest(x, y, rope=0, nsamples=50000):
+    diff = np.hstack(([0], y - x))
+    diff_m = np.lib.stride_tricks.as_strided(
+        diff, strides=diff.strides + (0,), shape=diff.shape * 2)
+    sums = diff_m + diff_m.T
+
+    if rope > 0:
+        above_rope = heaviside(sums, 2 * rope)
+        below_rope = heaviside(-sums, 2 * rope)
+
+        weights = np.ones(len(diff))
+        weights[0] = 0.5
+        wins = np.zeros((nsamples, 3))  # [[<left>, <right>, <rope>] * nsamples]
+        for i, samp_weights in enumerate(np.random.dirichlet(weights, nsamples)):
+            prod_weights = np.outer(samp_weights, samp_weights)
+            wins[i, 0] = np.sum(prod_weights * below_rope)
+            wins[i, 1] = np.sum(prod_weights * above_rope)
+        wins[:, 2] = -np.sum(wins, axis=1) + 1
+        # TODO: we ignore ties here; these are ties with rope ... inconsequential?
+        winners = np.argmax(wins, axis=1)
+        pl, pr, pe = np.bincount(winners, minlength=3) / len(winners)
+        return pl, pe, pr
+    else:
+        above_0 = heaviside(sums, 0)
+
+        weights = np.ones(len(diff))
+        weights[0] = 0.5
+        wins = 0
+        for samp_weights in np.random.dirichlet(weights, nsamples):
+            prod_weights = np.outer(samp_weights, samp_weights)
+            this_wins = np.sum(prod_weights * above_0)
+            # TODO: may we ignore ties here, too?
+            if this_wins > 0.5:
+                wins += 1
+            elif this_wins == 0.5:
+                wins += 0.5
+        wins /= nsamples
+        return 1 - wins, wins
+
+
+# TODO: factor out the code from signtest after the first line
+# TODO: factor out the sampling from signranktest .. call it montecarlo something
+#       then call what you factored our from signtest.
+
 @requires(plt, "matplotlib")
 def plot_posterior_sign(x, y, rope=0, prior=1, nsamples=50000,
                         names=('C1', 'C2')):
@@ -201,6 +249,8 @@ def plot_posterior_sign(x, y, rope=0, prior=1, nsamples=50000,
     points = monte_carlo_samples(x, y, rope, prior, nsamples)
     return plot_simplex(points, names)
 
+
+# TODO: plot_posterior_signrank?
 
 @requires(plt, "matplotlib")
 def plot_simplex(points, names=('C1', 'C2')):
@@ -252,3 +302,4 @@ def plot_simplex(points, names=('C1', 'C2')):
 
 two_on_single = correlated_t
 two_on_multiple = signtest
+
