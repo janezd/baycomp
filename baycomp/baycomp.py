@@ -15,9 +15,11 @@ except ImportError:
 
 
 __all__ = ["two_on_single", "two_on_multiple",
-           "signtest", "signranktest", "plot_posterior_sign", "plot_simplex",
+           "signtest", "plot_posterior_sign",
+           "signranktest", "plot_posterior_sign_rank",
            "correlated_t", "plot_posterior_t",
-           "LEFT", "ROPE", "RIGHT"]
+           "LEFT", "ROPE", "RIGHT",
+           "plot_simplex"]
 
 
 def requires(module, library):
@@ -29,7 +31,6 @@ def requires(module, library):
             return f(*args, **kwargs)
         return check_and_call
     return wrapper
-
 
 def _compute_posterior_t_parameters(x, y, runs=1):
     if not int(runs) == runs > 0:
@@ -122,9 +123,17 @@ def plot_posterior_t(x, y, rope=0.1, runs=1, names=None):
     return fig
 
 
+def p_values(samples, with_rope):
+    # TODO: we ignore ties here; these are ties with rope ... inconsequential?
+    winners = np.argmax(samples, axis=1)
+    pl, pe, pr = np.bincount(winners, minlength=3) / len(winners)
+    if with_rope:
+        return pl, pe, pr
+    return pl, pr
+
 LEFT, ROPE, RIGHT = range(3)
 
-def monte_carlo_samples(x, y, rope=0, prior=1, nsamples=50000):
+def monte_carlo_samples_sign(x, y, rope=0, prior=1, nsamples=50000):
     """
     Args:
         x (np.array): a vector of scores for the first model
@@ -174,61 +183,53 @@ def signtest(x, y, rope=0, prior=1, nsamples=50000):
     Returns:
         p_left, p_rope, p_right
     """
-    samples = monte_carlo_samples(x, y, rope, prior, nsamples)
-    winners = np.argmax(samples, axis=1)
-    pl, pe, pr = np.bincount(winners, minlength=3) / len(winners)
-    if rope == 0:
-        return pl, pr
-    return pl, pe, pr
+    samples = monte_carlo_samples_sign(x, y, rope, prior, nsamples)
+    return p_values(samples, rope > 0)
 
 
 def heaviside(a, thresh):
     return (a > thresh).astype(float) + (a == thresh).astype(float) * 0.5
 
 
-def signranktest(x, y, rope=0, nsamples=50000):
+def diff_sums(x, y):
     diff = np.hstack(([0], y - x))
     diff_m = np.lib.stride_tricks.as_strided(
         diff, strides=diff.strides + (0,), shape=diff.shape * 2)
-    sums = diff_m + diff_m.T
+    weights = np.ones(len(diff))
+    weights[0] = 0.5
+    return diff_m + diff_m.T, weights
 
-    if rope > 0:
+
+def monte_carlo_samples_rank(x, y, rope, nsamples=50000):
+    def with_rope():
+        sums, weights = diff_sums(x, y)
         above_rope = heaviside(sums, 2 * rope)
         below_rope = heaviside(-sums, 2 * rope)
-
-        weights = np.ones(len(diff))
-        weights[0] = 0.5
-        wins = np.zeros((nsamples, 3))  # [[<left>, <right>, <rope>] * nsamples]
+        samples = np.zeros((nsamples, 3))
         for i, samp_weights in enumerate(np.random.dirichlet(weights, nsamples)):
             prod_weights = np.outer(samp_weights, samp_weights)
-            wins[i, 0] = np.sum(prod_weights * below_rope)
-            wins[i, 1] = np.sum(prod_weights * above_rope)
-        wins[:, 2] = -np.sum(wins, axis=1) + 1
-        # TODO: we ignore ties here; these are ties with rope ... inconsequential?
-        winners = np.argmax(wins, axis=1)
-        pl, pr, pe = np.bincount(winners, minlength=3) / len(winners)
-        return pl, pe, pr
-    else:
+            samples[i, 0] = np.sum(prod_weights * below_rope)
+            samples[i, 2] = np.sum(prod_weights * above_rope)
+        samples[:, 1] = -samples[:, 0] - samples[:, 2] + 1
+        return samples
+
+    def without_rope():
+        sums, weights = diff_sums(x, y)
         above_0 = heaviside(sums, 0)
-
-        weights = np.ones(len(diff))
-        weights[0] = 0.5
-        wins = 0
-        for samp_weights in np.random.dirichlet(weights, nsamples):
+        samples = np.zeros((nsamples, 3))
+        for i, samp_weights in enumerate(np.random.dirichlet(weights, nsamples)):
             prod_weights = np.outer(samp_weights, samp_weights)
-            this_wins = np.sum(prod_weights * above_0)
-            # TODO: may we ignore ties here, too?
-            if this_wins > 0.5:
-                wins += 1
-            elif this_wins == 0.5:
-                wins += 0.5
-        wins /= nsamples
-        return 1 - wins, wins
+            samples[i, 2] = np.sum(prod_weights * above_0)
+        samples[:, 0] = -samples[:, 2] + 1
+        return samples
+
+    return with_rope() if rope > 0 else without_rope()
 
 
-# TODO: factor out the code from signtest after the first line
-# TODO: factor out the sampling from signranktest .. call it montecarlo something
-#       then call what you factored our from signtest.
+def signranktest(x, y, rope=0, nsamples=50000):
+    samples = monte_carlo_samples_rank(x, y, rope, nsamples)
+    return p_values(samples, rope > 0)
+
 
 @requires(plt, "matplotlib")
 def plot_posterior_sign(x, y, rope=0, prior=1, nsamples=50000,
@@ -246,11 +247,26 @@ def plot_posterior_sign(x, y, rope=0, prior=1, nsamples=50000,
     Returns:
         matplotlib.pyplot.figure
     """
-    points = monte_carlo_samples(x, y, rope, prior, nsamples)
+    points = monte_carlo_samples_sign(x, y, rope, prior, nsamples)
     return plot_simplex(points, names)
 
 
-# TODO: plot_posterior_signrank?
+@requires(plt, "matplotlib")
+def plot_posterior_sign_rank(x, y, rope=0, nsamples=50000, names=('C1', 'C2')):
+    """
+    Args:
+        x (np.array): a vector of scores for the first model
+        y (np.array): a vector of scores for the second model
+        rope (float): the width of the rope (default: 0)
+        nsamples (int): the number of Monte Carlo samples (default: 50000)
+        names (pair of str): the names of the two classifiers (default: C1, C2)
+
+    Returns:
+        matplotlib.pyplot.figure
+    """
+    points = monte_carlo_samples_rank(x, y, rope, nsamples)
+    return plot_simplex(points, names)
+
 
 @requires(plt, "matplotlib")
 def plot_simplex(points, names=('C1', 'C2')):
@@ -302,4 +318,3 @@ def plot_simplex(points, names=('C1', 'C2')):
 
 two_on_single = correlated_t
 two_on_multiple = signtest
-
