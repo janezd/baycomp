@@ -353,4 +353,4 @@ def plot2d(points, pl, pr, names):
 
 
 two_on_single = correlated_t
-two_on_multiple = signtest
+two_on_multiple = signranktest
