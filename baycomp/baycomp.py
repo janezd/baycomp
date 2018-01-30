@@ -26,11 +26,33 @@ def requires(module, library):
     def wrapper(f):
         def check_and_call(*args, **kwargs):
             if module is None:
-                raise ImportError("'{}' requires library '{}'"
-                                  .format(f.__name__, library))
+                raise ImportError(
+                    "'{0}' requires '{1}'; "
+                    "use 'pip install {1}' to install it"
+                    .format(f.__name__, library))
             return f(*args, **kwargs)
         return check_and_call
     return wrapper
+
+
+def _check_args(x, y, rope=0, prior=1, nsamples=50000, runs=1):
+    if x.ndim != 1:
+        raise ValueError("'x' must be a 1-dimensional array")
+    if y.ndim != 1:
+        raise ValueError("'y' must be a 1-dimensional array")
+    if len(x) != len(y):
+        raise ValueError("'x' and 'y' must be of same length")
+    if rope < 0:
+        raise ValueError('Rope width cannot be negative')
+    if prior < 0:
+        raise ValueError('Prior strength cannot be negative')
+    if not round(nsamples) == nsamples > 0:
+        raise ValueError('Number of samples must be a positive integer')
+    if not round(runs) == runs > 0:
+        raise ValueError("Number of runs must be a positive integer")
+    if len(x) % round(runs) != 0:
+        raise ValueError("Number of measurements is not divisible by number of runs")
+
 
 def _compute_posterior_t_parameters(x, y, runs=1):
     if not int(runs) == runs > 0:
@@ -72,7 +94,9 @@ def correlated_t(x, y, rope=0, runs=1):
     Returns:
         (p_left, p_rope, p_right), or (p_left, p_right) if rope is 0
     """
+    _check_args(x, y, rope, runs=runs)
     mean, var, df = _compute_posterior_t_parameters(x, y, runs)
+
     if var == 0:
         return float(mean < rope), float(-rope <= mean <= rope), float(rope < mean)
     greater = stats.t.cdf(mean, df, rope, np.sqrt(var))
@@ -100,6 +124,9 @@ def plot_posterior_t(x, y, rope=0.1, runs=1, names=None):
     Returns:
         matplotlib.pyplot.figure
     """
+    _check_args(x, y, rope, runs=runs)
+    mean, var, df = _compute_posterior_t_parameters(x, y, runs)
+
     fig, ax = plt.subplots()
     ax.grid(True)
     x_label = "difference"
@@ -111,7 +138,6 @@ def plot_posterior_t(x, y, rope=0.1, runs=1, names=None):
     ax.axvline(x=-rope, color="#ffad2f", linewidth=2, label="rope")
     ax.axvline(x=rope, color="#ffad2f", linewidth=2)
 
-    mean, var, df = _compute_posterior_t_parameters(x, y, runs)
     targs = (df, mean, np.sqrt(var))
     xs = np.linspace(min(stats.t.ppf(0.005, *targs), -1.05 * rope),
                      max(stats.t.ppf(0.995, *targs), 1.05 * rope),
@@ -124,7 +150,7 @@ def plot_posterior_t(x, y, rope=0.1, runs=1, names=None):
 
 
 def p_values(samples, with_rope):
-    # TODO: we ignore ties here; these are ties with rope ... inconsequential?
+    # TODO: we ignore ties here; inconsequential?
     winners = np.argmax(samples, axis=1)
     pl, pe, pr = np.bincount(winners, minlength=3) / len(winners)
     if with_rope:
@@ -151,12 +177,7 @@ def monte_carlo_samples_sign(x, y, rope=0, prior=1, nsamples=50000):
         prior, prior_place = prior
     else:
         prior_place = ROPE
-    if prior < 0:
-        raise ValueError('Prior strength cannot be negative')
-    if not round(nsamples) == nsamples > 0:
-        raise ValueError('Number of samples must be a positive integer')
-    if rope < 0:
-        raise ValueError('Rope width cannot be negative')
+    _check_args(x, y, rope, prior, nsamples)
 
     diff = y - x
     nleft = sum(diff < -rope)
@@ -223,6 +244,7 @@ def monte_carlo_samples_rank(x, y, rope, nsamples=50000):
         samples[:, 0] = -samples[:, 2] + 1
         return samples
 
+    _check_args(x, y, rope, nsamples)
     return with_rope() if rope > 0 else without_rope()
 
 
