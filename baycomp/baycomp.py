@@ -299,8 +299,9 @@ def plot_simplex(points, names=('C1', 'C2')):
         y = p3 - (p1 + p2) * sin(pi / 6) + 1 / (2 * sqrt(3))
         return np.vstack((x, y)).T
 
-    winners = np.argmax(points, axis=1)
-    pl, pe, pr = np.bincount(winners, minlength=3) / len(winners)
+    pl, pe, pr = p_values(points, True)
+    if pe == 0:
+        return plot2d(points[:, 2], pl, pr, names)
 
     vert0 = _project(np.array(
         [[0.3333, 0.3333, 0.3333], [0.5, 0.5, 0], [0.5, 0, 0.5], [0, 0.5, 0.5]]))
@@ -319,13 +320,13 @@ def plot_simplex(points, names=('C1', 'C2')):
                    [vert0[0, 1], vert0[i, 1]], color='orange'))
 
     ax.text(0, -0.04,
-            'p({})={:.3f}'.format(names[0], pl),
+            'p({}) = {:.3f}'.format(names[0], pl),
             horizontalalignment='center', verticalalignment='top')
     ax.text(0.5, np.sqrt(3) / 2,
             'p(rope) = {:.3f}'.format(pe),
             horizontalalignment='center', verticalalignment='bottom')
     ax.text(1, -0.04,
-            'p({})={:.3f}'.format(names[1], pr),
+            'p({}) = {:.3f}'.format(names[1], pr),
             horizontalalignment='center', verticalalignment='top')
 
     # project and draw points
@@ -337,6 +338,23 @@ def plot_simplex(points, names=('C1', 'C2')):
     ax.set_ylim(-0.2, 1.2)
     ax.axis('off')
     return fig
+
+
+@requires(plt, "matplotlib")
+def plot2d(points, pl, pr, names):
+    fig, ax = plt.subplots()
+    ax.grid(True)
+    ax.hist(points, 50, color="#34ccff")
+    ax.axis(xmin=0, xmax=1)
+    ax.text(0, 0, "\np({}) = {:.3f}".format(names[0], pl),
+            horizontalalignment='left', verticalalignment='top')
+    ax.text(1, 0, "\np({}) = {:.3f}".format(names[1], pr),
+            horizontalalignment='right', verticalalignment='top')
+    ax.get_xaxis().set_ticklabels([])
+    ax.get_yaxis().set_ticklabels([])
+    ax.axvline(x=0.5, color="#ffad2f", linewidth=2)
+    return fig
+
 
 two_on_single = correlated_t
 two_on_multiple = signtest
