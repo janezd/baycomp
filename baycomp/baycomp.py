@@ -160,19 +160,6 @@ def p_values(samples, with_rope):
 LEFT, ROPE, RIGHT = range(3)
 
 def monte_carlo_samples_sign(x, y, rope=0, prior=1, nsamples=50000):
-    """
-    Args:
-        x (np.array): a vector of scores for the first model
-        y (np.array): a vector of scores for the second model
-        rope (float): the width of the rope (default: 0)
-        prior (float or tuple): prior strength, or tuple with strength and
-            place (`LEFT`, `ROPE` or `RIGHT`); (default: 1)
-        nsamples (int): the number of Monte Carlo samples (default: 50000)
-
-    Returns:
-        2-d array with rows corresponding to samples and columns to
-        probabilities `[p_left, p_rope, p_right]`
-    """
     if isinstance(prior, tuple):
         prior, prior_place = prior
     else:
@@ -198,11 +185,9 @@ def signtest(x, y, rope=0, prior=1, nsamples=50000):
         prior (float or tuple): prior strength, or tuple with strength and
             place (`LEFT`, `ROPE` or `RIGHT`); (default: 1)
         nsamples (int): the number of Monte Carlo samples (default: 50000)
-        verbose (bool): report the computed probabilities (default: False)
-        names (pair of str): the names of the two classifiers (default: C1, C2)
 
     Returns:
-        p_left, p_rope, p_right
+        (p_left, p_rope, p_right) if rope > 0, else (p_left, p_right)
     """
     samples = monte_carlo_samples_sign(x, y, rope, prior, nsamples)
     return p_values(samples, rope > 0)
@@ -249,6 +234,17 @@ def monte_carlo_samples_rank(x, y, rope, nsamples=50000):
 
 
 def signranktest(x, y, rope=0, nsamples=50000):
+    """
+    Args:
+        x (np.array): a vector of scores for the first model
+        y (np.array): a vector of scores for the second model
+        rope (float): the width of the rope (default: 0)
+        nsamples (int): the number of Monte Carlo samples (default: 50000)
+
+    Returns:
+        (p_left, p_rope, p_right) if rope > 0, else (p_left, p_right)
+    """
+
     samples = monte_carlo_samples_rank(x, y, rope, nsamples)
     return p_values(samples, rope > 0)
 
