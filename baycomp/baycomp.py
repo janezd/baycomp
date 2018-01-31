@@ -1,5 +1,9 @@
+import os
+import pickle
+
 import numpy as np
 from scipy import stats
+import pystan
 
 try:
     import matplotlib.pyplot as plt
@@ -18,8 +22,9 @@ __all__ = ["two_on_single", "two_on_multiple",
            "signtest", "plot_posterior_sign",
            "signranktest", "plot_posterior_sign_rank",
            "correlated_t", "plot_posterior_t",
-           "LEFT", "ROPE", "RIGHT",
-           "plot_simplex"]
+           "hierarchical_t",
+           "plot_simplex", "plot_histogram",
+           "LEFT", "ROPE", "RIGHT"]
 
 
 def requires(module, library):
@@ -197,16 +202,15 @@ def heaviside(a, thresh):
     return (a > thresh).astype(float) + (a == thresh).astype(float) * 0.5
 
 
-def diff_sums(x, y):
-    diff = np.hstack(([0], y - x))
-    diff_m = np.lib.stride_tricks.as_strided(
-        diff, strides=diff.strides + (0,), shape=diff.shape * 2)
-    weights = np.ones(len(diff))
-    weights[0] = 0.5
-    return diff_m + diff_m.T, weights
-
-
 def monte_carlo_samples_rank(x, y, rope, nsamples=50000):
+    def diff_sums(x, y):
+        diff = np.hstack(([0], y - x))
+        diff_m = np.lib.stride_tricks.as_strided(
+            diff, strides=diff.strides + (0,), shape=diff.shape * 2)
+        weights = np.ones(len(diff))
+        weights[0] = 0.5
+        return diff_m + diff_m.T, weights
+
     def with_rope():
         sums, weights = diff_sums(x, y)
         above_rope = heaviside(sums, 2 * rope)
@@ -296,8 +300,8 @@ def plot_simplex(points, names=('C1', 'C2')):
         return np.vstack((x, y)).T
 
     pl, pe, pr = p_values(points, True)
-    if pe == 0:
-        return plot2d(points[:, 2], pl, pr, names)
+    if np.max(points[:, 1]) < 0.1:
+        return plot_histogram(points[:, 2], pl, pr, names)
 
     vert0 = _project(np.array(
         [[0.3333, 0.3333, 0.3333], [0.5, 0.5, 0], [0.5, 0, 0.5], [0, 0.5, 0.5]]))
@@ -337,19 +341,118 @@ def plot_simplex(points, names=('C1', 'C2')):
 
 
 @requires(plt, "matplotlib")
-def plot2d(points, pl, pr, names):
+def plot_histogram(points, pl=None, pr=None, names=("C1", "C2")):
     fig, ax = plt.subplots()
     ax.grid(True)
     ax.hist(points, 50, color="#34ccff")
     ax.axis(xmin=0, xmax=1)
-    ax.text(0, 0, "\np({}) = {:.3f}".format(names[0], pl),
-            horizontalalignment='left', verticalalignment='top')
-    ax.text(1, 0, "\np({}) = {:.3f}".format(names[1], pr),
-            horizontalalignment='right', verticalalignment='top')
-    ax.get_xaxis().set_ticklabels([])
+    if pl is not None:
+        ax.text(0, 0, "\np({}) = {:.3f}".format(names[0], pl),
+                horizontalalignment='left', verticalalignment='top')
+        ax.text(1, 0, "\np({}) = {:.3f}".format(names[1], pr),
+                horizontalalignment='right', verticalalignment='top')
+    #ax.get_xaxis().set_ticklabels([])
     ax.get_yaxis().set_ticklabels([])
     ax.axvline(x=0.5, color="#ffad2f", linewidth=2)
     return fig
+
+
+def _get_stan_model(model):
+    stan_file = os.path.join(os.path.split(__file__)[0], model)
+    pickle_file = stan_file + ".pickle"
+    if os.path.exists(pickle_file) and os.path.getmtime(pickle_file) > os.path.getmtime(stan_file):
+        return pickle.load(open(pickle_file, "rb"))
+    model_code = open(stan_file).read()
+    stan_model = pystan.StanModel(model_code=model_code)
+    #try:
+    pickle.dump(stan_model, open(pickle_file, "wb"))
+    #except Exception:
+     #   pass
+    return stan_model
+
+
+# TODO: rho?
+def hierarchical_t(x, y, rope, rho=0.1, std_upper_bound=1000, chains=4, verbose_result=False):
+    CACHE_FILE_NAME = "stored-stan-results.pickle"
+
+    def arr_to_tuple(a):
+        return tuple(tuple(e for e in row) for row in a)
+
+    def get_p_values(delta):
+        pl = np.mean(delta0 < -rope)
+        pr = np.mean(delta0 > rope)
+        pe = 1 - pl - pr
+        return pl, pe, pr
+
+    def get_cached_results():
+        try:
+            with open(CACHE_FILE_NAME, "rb") as f:
+                stored_hash, results = pickle.load(f)
+                if stored_hash == data_hash:
+                    return results
+        except:
+            pass
+
+    def cache_results():
+        try:
+            with open(CACHE_FILE_NAME, "wb") as f:
+                pickle.dump((data_hash, results), f)
+        except:
+            pass
+
+        
+    ndatasets, nscores = x.shape
+
+    data_hash = hash((arr_to_tuple(x), arr_to_tuple(y), rho, std_upper_bound, chains))
+    results = get_cached_results()
+
+    if results is None:
+        diff = y - x
+        stds = np.std(diff, axis=1)
+        std_diff = np.mean(stds)
+        diff /= std_diff
+        rope /= std_diff
+    
+        nscores_2 = nscores // 2
+        for sample, std in zip(diff, stds):
+            if std == 0:
+                noise = np.random.uniform(-rope, rope, nscores_2)
+                sample[:nscores_2] = noise
+                sample[nscores_2:] = -noise
+
+        std_within = np.mean(np.std(diff, axis=1))  # may be different from std_diff!
+        std_among = np.std(np.mean(diff, axis=1)) if ndatasets > 1 else std_within
+    
+        stan_data = dict(
+            x=diff, Nsamples=nscores, q=ndatasets,
+            rho=rho,
+            deltaLow=-1 / std_diff, deltaHi=1 / std_diff,
+            stdLow=0, stdHi=std_within * std_upper_bound,
+            std0Low=0, std0Hi=std_among * std_upper_bound,
+        )
+    
+        model = _get_stan_model("hierarchical-t-test.stan")
+        fit = model.sampling(data=stan_data, chains=chains)
+        results = fit.extract(permuted=True)
+        cache_results()
+
+    delta0 = results["delta0"]
+    std0 = results["std0"]
+    nu = results["nu"]
+
+    pl, pe, pr = get_p_values(delta0)
+    if not verbose_result:
+        return pl, pe, pr
+
+    by_data_sets = np.array([get_p_values(delta) for delta in results["delta"]])
+
+    sample = np.empty((len(nu), 3))
+    for mu, std, df, sample_row in zip(delta0, std0, nu, sample):
+        sample_row[2] = stats.t.cdf(mu, df, rope, std)
+        sample_row[0] = 1 - stats.t.cdf(mu, df, -rope, std)
+        sample_row[1] = 1 - sample_row[0] - sample_row[2]
+
+    return (pl, pe, pr), by_data_sets, sample
 
 
 two_on_single = correlated_t
