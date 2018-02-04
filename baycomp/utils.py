@@ -1,7 +1,7 @@
 try:
     import seaborn
     seaborn.set(color_codes=True)
-except ImportError:
+except Exception:
     pass
 
 

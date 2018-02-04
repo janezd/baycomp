@@ -206,7 +206,7 @@ class CorrelatedTTest:
         return cls(x, y, rope, runs).plot(names)
 
 
-def two_on_single(x, y, rope, runs=1, *, names=None, plot=False):
+def two_on_single(x, y, rope=0, runs=1, *, names=None, plot=False):
     """
     Compute probabilities using a Bayesian correlated t-test and,
     optionally, draw a histogram.

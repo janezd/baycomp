@@ -449,7 +449,7 @@ class HierarchicalTest(Test):
         return samples
 
 
-def two_on_multiple(x, y, rope, runs=1, *args,
+def two_on_multiple(x, y, rope=0, runs=1, *args,
                     names=None, plot=False, **kwargs):
     """
     Compute probabilities using a Bayesian signed-ranks test (if `x` and `y` or
