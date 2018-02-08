@@ -23,6 +23,8 @@ better than J48 and vice versa.
 There is a 58.5 % probability that the average performance of J48 on this
 problem is better than that of NBC. We can add rope: let us consider the two
 methods equivalent if their classification accuracies differ by less than 0.5.
+(Recall again that `rope` is on the same scale as `nbc` and `j48`. If they
+are in percents, so is the rope.)
 
     >>> two_on_single(nbc, j48, rope=0.5)
     (0.28584464173791002, 0.2691518716880249, 0.44500348657406508)
