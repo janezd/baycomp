@@ -59,8 +59,8 @@ class TestTest(TestTestBase):
     def test_new(self, mockposterior, mocksample):
         x = np.array([4, 2, 6])
         y = np.array([5, 7, 3])
-        Test(x, y, 1, 2, nsamples=3, foo=42)
-        mocksample.assert_called_with(x, y, 1, 2, nsamples=3, foo=42)
+        Test(x, y, 1, nsamples=3, foo=42)
+        mocksample.assert_called_with(x, y, 1, nsamples=3, foo=42)
         mockposterior.assert_called_with(mocksample.return_value)
 
     def test_probs(self):
@@ -181,7 +181,7 @@ class TwoOnMultipleTest(unittest.TestCase):
 
         x = np.array([1, 2, 3])
         y = np.array([4, 5, 6])
-        two_on_multiple(x, y, 0.5, 10, plot=True, names=names)
+        two_on_multiple(x, y, 0.5, runs=10, plot=True, names=names)
         mockcall.assert_called_with(
             SignedRankTest, x, y, 0.5, plot=True, names=names)
 
@@ -191,6 +191,6 @@ class TwoOnMultipleTest(unittest.TestCase):
         mockcall.assert_called_with(
             HierarchicalTest, x, y, 0.5, plot=True, runs=1, names=names)
 
-        two_on_multiple(x, y, 0.5, 10, plot=True, names=names)
+        two_on_multiple(x, y, 0.5, runs=10, plot=True, names=names)
         mockcall.assert_called_with(
             HierarchicalTest, x, y, 0.5, plot=True, runs=10, names=names)

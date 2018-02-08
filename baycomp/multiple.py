@@ -146,12 +146,11 @@ class Posterior:
 class Test:
     LEFT, ROPE, RIGHT = range(3)
 
-    def __new__(cls, x, y, rope=0, *args, nsamples=50000, **kwargs):
-        return Posterior(cls.sample(x, y, rope, nsamples=nsamples,
-                                    *args, **kwargs))
+    def __new__(cls, x, y, rope=0, *, nsamples=50000, **kwargs):
+        return Posterior(cls.sample(x, y, rope, nsamples=nsamples, **kwargs))
 
     @classmethod
-    def sample(cls, x, y, rope=0, *args, nsamples=50000, **kwargs):
+    def sample(cls, x, y, rope=0, nsamples=50000, **kwargs):
         """
         Compute a sample of posterior distribution.
 
@@ -170,7 +169,7 @@ class Test:
         pass
 
     @classmethod
-    def probs(cls, x, y, rope=0, *args, nsamples=50000, **kwargs):
+    def probs(cls, x, y, rope=0, *, nsamples=50000, **kwargs):
         """
         Compute and return probabilities
 
@@ -184,10 +183,12 @@ class Test:
             `(p_left, p_rope, p_right)` if `rope > 0`;
             otherwise `(p_left, p_right)`.
         """
-        return cls(x, y, rope, nsamples=nsamples, *args, **kwargs).probs(rope > 0)
+        # new returns an instance of Posterior, not Test
+        # pylint: disable=no-value-for-parameter
+        return cls(x, y, rope, nsamples=nsamples, **kwargs).probs(rope > 0)
 
     @classmethod
-    def plot(cls, x, y, rope, *args, nsamples=50000, names=None, **kwargs):
+    def plot(cls, x, y, rope, *, nsamples=50000, names=None, **kwargs):
         """
         Plot the posterior distribution.
 
@@ -207,11 +208,10 @@ class Test:
             matplotlib figure
         """
         # pylint: disable=no-value-for-parameter
-        return cls(x, y, rope, nsamples=nsamples, *args, **kwargs).plot(names)
+        return cls(x, y, rope, nsamples=nsamples, **kwargs).plot(names)
 
     @classmethod
-    def plot_simplex(cls, x, y, rope, *args,
-                     nsamples=50000, names=None, **kwargs):
+    def plot_simplex(cls, x, y, rope, *, nsamples=50000, names=None, **kwargs):
         """
         Plot the posterior distribution in a simplex.
 
@@ -230,12 +230,10 @@ class Test:
             matplotlib figure
         """
         # pylint: disable=no-value-for-parameter
-        return cls(x, y, rope, nsamples=nsamples, *args, **kwargs) \
-               .plot_simplex(names)
+        return cls(x, y, rope, nsamples=nsamples, **kwargs).plot_simplex(names)
 
     @classmethod
-    def plot_histogram(cls, x, y, *args,
-                       nsamples=50000, names=None, **kwargs):
+    def plot_histogram(cls, x, y, *, nsamples=50000, names=None, **kwargs):
         """
         Plot the posterior distribution as histogram.
 
@@ -249,7 +247,8 @@ class Test:
             matplotlib figure
         """
         # pylint: disable=no-value-for-parameter
-        return cls(x, y, rope=0, nsamples=nsamples, *args, **kwargs).plot_histogram(names)
+        return cls(x, y, rope=0, nsamples=nsamples, **kwargs)\
+            .plot_histogram(names)
 
 
 class SignTest(Test):
@@ -267,7 +266,7 @@ class SignTest(Test):
 
     @classmethod
     # pylint: disable=arguments-differ
-    def sample(cls, x, y, rope=0, prior=1, nsamples=50000):
+    def sample(cls, x, y, rope=0, *, prior=1, nsamples=50000):
         if isinstance(prior, tuple):
             prior, prior_place = prior
         else:
@@ -298,7 +297,7 @@ class SignedRankTest(Test):
 
     @classmethod
     # pylint: disable=arguments-differ
-    def sample(cls, x, y, rope=0, prior=0.5, *, nsamples=50000):
+    def sample(cls, x, y, rope=0, *, prior=0.5, nsamples=50000):
         def heaviside(a, thresh):
             return (a > thresh).astype(float) + 0.5 * (a == thresh).astype(float)
 
@@ -351,15 +350,15 @@ class HierarchicalTest(Test):
     @classmethod
     # pylint: disable=arguments-differ
     # pylint: disable=unused-argument
-    def sample(cls, x, y, rope, runs=1, *,
+    def sample(cls, x, y, rope, *, runs=1,
                lower_alpha=1, upper_alpha=2,
-               lower_beta = 0.01, upper_beta = 0.1,
+               lower_beta=0.01, upper_beta=0.1,
                upper_sigma=1000, chains=4, nsamples=None):
         try:
             import pystan
         except ImportError:
             raise ImportError("Hierarchical model requires 'pystan'; "
-                                "install it by 'pip install pystan'")
+                              "install it by 'pip install pystan'")
 
         LAST_SAMPLE_PICKLE = "last-sample.pickle"
         STAN_MODEL_PICKLE = "stored-stan-model.pickle"
@@ -374,6 +373,7 @@ class HierarchicalTest(Test):
                     and os.path.getmtime(fname) > os.path.getmtime(stan_file):
                 with open(fname, "rb") as f:
                     return pickle.load(f)
+            return None
 
         def try_pickle(obj, fname):
             try:
@@ -449,8 +449,7 @@ class HierarchicalTest(Test):
         return samples
 
 
-def two_on_multiple(x, y, rope=0, runs=1, *args,
-                    names=None, plot=False, **kwargs):
+def two_on_multiple(x, y, rope=0, *, runs=1, names=None, plot=False, **kwargs):
     """
     Compute probabilities using a Bayesian signed-ranks test (if `x` and `y` or
     one-dimensional) or a hierarchical (if they are two-dimensions), and,
@@ -483,5 +482,4 @@ def two_on_multiple(x, y, rope=0, runs=1, *args,
         kwargs["runs"] = runs
     else:
         test = SignedRankTest
-    return call_shortcut(test, x, y, rope, *args,
-                         names=names, plot=plot, **kwargs)
+    return call_shortcut(test, x, y, rope, names=names, plot=plot, **kwargs)

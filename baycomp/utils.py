@@ -1,7 +1,8 @@
 try:
     import seaborn
     seaborn.set(color_codes=True)
-except Exception:
+# Can be import error or matplotlib's complaints about macOS platform
+except Exception:  # pylint: disable=broad-except
     pass
 
 

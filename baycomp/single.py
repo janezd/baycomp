@@ -187,6 +187,8 @@ class CorrelatedTTest:
             `(p_left, p_rope, p_right)` if `rope > 0`;
             otherwise `(p_left, p_right)`.
         """
+        # new returns an instance of Test, not CorrelatedTTest
+        # pylint: disable=no-value-for-parameter
         return cls(x, y, rope, runs).probs()
 
     @classmethod
@@ -203,6 +205,8 @@ class CorrelatedTTest:
         Returns:
             matplotlib figure
         """
+        # new returns an instance of Test, not CorrelatedTTest
+        # pylint: disable=no-value-for-parameter
         return cls(x, y, rope, runs).plot(names)
 
 
