@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='baycomp',
-    version='0.7.1',
+    version='0.7.2',
     url='https://github.com/janezd/baycomp.git',
     author='J. Demsar, A. Benavoli, G. Corani',
     author_email='janez.demsar@fri.uni-lj.si',

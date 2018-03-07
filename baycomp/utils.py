@@ -12,7 +12,7 @@ def import_plt():
         return plt
     except ImportError:
         raise ImportError("Plotting requires 'matplotlib'; "
-                          "use 'pip install {1}' to install it")
+                          "use 'pip install matplotlib' to install it")
 
 
 def check_args(x, y, rope=0, prior=1, nsamples=50000):
