@@ -20,7 +20,8 @@ setup(
         'matplotlib >= 2.1.2',
         'numpy >= 1.13.1',
         'scipy >= 0.19.1',
-        'seaborn >= 0.8.1'
+        'seaborn >= 0.8.1',
+        'pystan==2.17.1.0'
         ],
     python_requires='>=3',
     package_data={

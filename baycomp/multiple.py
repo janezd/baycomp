@@ -415,10 +415,16 @@ class HierarchicalTest(Test):
             )
 
         def get_stan_model(model_file):
+            import distutils
             stan_model = try_unpickle(STAN_MODEL_PICKLE)
             if stan_model is None:
                 model_code = open(model_file).read()
-                stan_model = pystan.StanModel(model_code=model_code)
+                try:
+                    stan_model = pystan.StanModel(model_code=model_code)
+                except distutils.errors.DistutilsPlatformError:
+                    raise RuntimeError(
+                        "Error compiling model, "
+                        "probably due to a missing C compiler")
                 try_pickle(stan_model, STAN_MODEL_PICKLE)
             return stan_model
 
