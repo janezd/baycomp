@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='baycomp',
-    version='1.0',
+    version='1.0.1',
     url='https://github.com/janezd/baycomp.git',
     author='J. Demsar, A. Benavoli, G. Corani',
     author_email='janez.demsar@fri.uni-lj.si',
@@ -22,5 +22,7 @@ setup(
         'scipy >= 0.19.1',
         'seaborn >= 0.8.1'
         ],
-    python_requires='>=3'
+    python_requires='>=3',
+    package_data={
+        'baycomp': ['hierarchical-t-test.stan']}
 )
