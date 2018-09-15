@@ -93,19 +93,24 @@ class Posterior:
 
         fig, ax = plt.subplots()
         ax.grid(True)
-        label = "difference"
+        probs = self.probs()
         if self.meanx is not None and self.meany is not None:
-            label += " ({}: {:.3f}, {}: {:.3f})".format(
-                names[0], self.meanx, names[1], self.meany)
-        ax.set_xlabel(label)
+            plt.text(0, 0.3, "{}: {:.3f}\np={:.3f}".format(names[0], self.meanx, probs[0]),
+                     transform=ax.transAxes,
+                     horizontalalignment="left", verticalalignment="baseline")
+            plt.text(1, 0.3, "{}: {:.3f}\np={:.3f}".format(names[1], self.meany, probs[-1]),
+                     transform=ax.transAxes,
+                     horizontalalignment="right", verticalalignment="baseline")
+        ax.set_xlabel("difference", fontsize='medium')
         ax.get_yaxis().set_ticklabels([])
         ax.axvline(x=-self.rope, color="#ffad2f", linewidth=2, label="rope")
         ax.axvline(x=self.rope, color="#ffad2f", linewidth=2)
 
         targs = (self.df, self.mean, np.sqrt(self.var))
-        xs = np.linspace(min(stats.t.ppf(0.005, *targs), -1.05 * self.rope),
-                         max(stats.t.ppf(0.995, *targs), 1.05 * self.rope),
-                         100)
+        maxx = max(-stats.t.ppf(0.005, *targs),
+                   stats.t.ppf(0.995, *targs),
+                   1.05 * self.rope)
+        xs = np.linspace(-maxx, maxx, 100)
         ys = stats.t.pdf(xs, *targs)
         ax.plot(xs, ys, color="#2f56e0", linewidth=2, label="pdf")
         ax.fill_between(xs, ys, np.zeros(100), color="#34ccff")
