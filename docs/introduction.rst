@@ -74,7 +74,7 @@ is only a 5 % probability of getting such (or more) extreme differences if the
 classifiers are equal. This is thus the probability of the data and does not
 tell anything about the probability that A is better then B.
 
-Once again: no, getting a p-value of 0.5 doesn't mean that there is a 95 %
+Once again: no, getting a p-value of 0.05 doesn't mean that there is a 95 %
 chance that A is better than B.
 
 Bayesian tests give us exactly that: the actual probability of A being better
