@@ -3,7 +3,7 @@ from functools import lru_cache
 import numpy as np
 from scipy import stats
 
-from .utils import check_args, import_plt, call_shortcut
+from .utils import check_args, seaborn_plt, call_shortcut
 
 __all__ = ["CorrelatedTTest", "two_on_single"]
 
@@ -88,29 +88,29 @@ class Posterior:
         Returns:
             matplotlib figure
         """
-        plt = import_plt()
-        names = names or self.names or ("C1", "C2")
+        with seaborn_plt() as plt:
+            names = names or self.names or ("C1", "C2")
 
-        fig, ax = plt.subplots()
-        ax.grid(True)
-        label = "difference"
-        if self.meanx is not None and self.meany is not None:
-            label += " ({}: {:.3f}, {}: {:.3f})".format(
-                names[0], self.meanx, names[1], self.meany)
-        ax.set_xlabel(label)
-        ax.get_yaxis().set_ticklabels([])
-        ax.axvline(x=-self.rope, color="#ffad2f", linewidth=2, label="rope")
-        ax.axvline(x=self.rope, color="#ffad2f", linewidth=2)
+            fig, ax = plt.subplots()
+            ax.grid(True)
+            label = "difference"
+            if self.meanx is not None and self.meany is not None:
+                label += " ({}: {:.3f}, {}: {:.3f})".format(
+                    names[0], self.meanx, names[1], self.meany)
+            ax.set_xlabel(label)
+            ax.get_yaxis().set_ticklabels([])
+            ax.axvline(x=-self.rope, color="#ffad2f", linewidth=2, label="rope")
+            ax.axvline(x=self.rope, color="#ffad2f", linewidth=2)
 
-        targs = (self.df, self.mean, np.sqrt(self.var))
-        xs = np.linspace(min(stats.t.ppf(0.005, *targs), -1.05 * self.rope),
-                         max(stats.t.ppf(0.995, *targs), 1.05 * self.rope),
-                         100)
-        ys = stats.t.pdf(xs, *targs)
-        ax.plot(xs, ys, color="#2f56e0", linewidth=2, label="pdf")
-        ax.fill_between(xs, ys, np.zeros(100), color="#34ccff")
-        ax.legend()
-        return fig
+            targs = (self.df, self.mean, np.sqrt(self.var))
+            xs = np.linspace(min(stats.t.ppf(0.005, *targs), -1.05 * self.rope),
+                             max(stats.t.ppf(0.995, *targs), 1.05 * self.rope),
+                             100)
+            ys = stats.t.pdf(xs, *targs)
+            ax.plot(xs, ys, color="#2f56e0", linewidth=2, label="pdf")
+            ax.fill_between(xs, ys, np.zeros(100), color="#34ccff")
+            ax.legend()
+            return fig
 
 
 class CorrelatedTTest:

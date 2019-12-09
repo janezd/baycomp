@@ -4,18 +4,10 @@ from unittest.mock import Mock, patch
 
 import numpy as np
 
-from baycomp.utils import check_args, call_shortcut, import_plt
+from baycomp.utils import check_args, call_shortcut, seaborn_plt
 
 
 class UtilsTest(unittest.TestCase):
-    def test_import_plt(self):
-        mockplt = object()
-        mockmatplotlib = Mock(**{'pyplot': mockplt})
-        with patch.dict(sys.modules, {"matplotlib": mockmatplotlib}):
-            self.assertEqual(import_plt(), mockplt)
-        with patch.dict(sys.modules, {"matplotlib": None}):
-            self.assertRaises(ImportError, import_plt)
-
     def test_check_args(self):
         y = x = np.ones((5, ))
 

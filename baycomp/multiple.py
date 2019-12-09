@@ -4,7 +4,7 @@ import pickle
 import numpy as np
 from scipy import stats
 
-from .utils import check_args, import_plt, call_shortcut
+from .utils import check_args, seaborn_plt, call_shortcut
 
 __all__ = ["SignTest", "SignedRankTest", "HierarchicalTest", "two_on_multiple"]
 
@@ -73,45 +73,48 @@ class Posterior:
             matplotlib figure
         """
 
-        plt = import_plt()
-        from matplotlib.lines import Line2D
+        with seaborn_plt() as plt:
+            from matplotlib.lines import Line2D
 
-        def project(points):
-            from math import sqrt, sin, cos, pi
-            p1, p2, p3 = points.T / sqrt(3)
-            x = (p2 - p1) * cos(pi / 6) + 0.5
-            y = p3 - (p1 + p2) * sin(pi / 6) + 1 / (2 * sqrt(3))
-            return np.vstack((x, y)).T
+            def project(points):
+                from math import sqrt, sin, cos, pi
+                p1, p2, p3 = points.T / sqrt(3)
+                x = (p2 - p1) * cos(pi / 6) + 0.5
+                y = p3 - (p1 + p2) * sin(pi / 6) + 1 / (2 * sqrt(3))
+                return np.vstack((x, y)).T
 
-        fig, ax = plt.subplots()
-        ax.set_aspect('equal', 'box')
+            fig, ax = plt.subplots()
+            ax.set_aspect('equal', 'box')
 
-        # triangle
-        ax.add_line(Line2D([0, 0.5, 1.0, 0],
-                           [0, np.sqrt(3) / 2, 0, 0], color='orange'))
-        names = names or self.names or ("C1", "C2")
-        pl, pe, pr = self.probs()
-        ax.text(0, -0.04,
-                'p({}) = {:.3f}'.format(names[0], pl),
-                horizontalalignment='center', verticalalignment='top')
-        ax.text(0.5, np.sqrt(3) / 2,
-                'p(rope) = {:.3f}'.format(pe),
-                horizontalalignment='center', verticalalignment='bottom')
-        ax.text(1, -0.04,
-                'p({}) = {:.3f}'.format(names[1], pr),
-                horizontalalignment='center', verticalalignment='top')
-        cx, cy = project(np.array([[0.3333, 0.3333, 0.3333]]))[0]
-        for x, y in project(np.array([[.5, .5, 0], [.5, 0, .5], [0, .5, .5]])):
-            ax.add_line(Line2D([cx, x], [cy, y], color='orange'))
+            # triangle
+            ax.add_line(Line2D([0, 0.5, 1.0, 0],
+                               [0, np.sqrt(3) / 2, 0, 0], color='orange'))
+            names = names or self.names or ("C1", "C2")
+            pl, pe, pr = self.probs()
+            ax.text(0, -0.04,
+                    'p({}) = {:.3f}'.format(names[0], pl),
+                    horizontalalignment='center', verticalalignment='top')
+            ax.text(0.5, np.sqrt(3) / 2,
+                    'p(rope) = {:.3f}'.format(pe),
+                    horizontalalignment='center', verticalalignment='bottom')
+            ax.text(1, -0.04,
+                    'p({}) = {:.3f}'.format(names[1], pr),
+                    horizontalalignment='center', verticalalignment='top')
+            cx, cy = project(np.array([[0.3333, 0.3333, 0.3333]]))[0]
+            for x, y in project(np.array([[.5, .5, 0],
+                                          [.5, 0, .5],
+                                          [0, .5, .5]])):
+                ax.add_line(Line2D([cx, x], [cy, y], color='orange'))
 
-        # project and draw points
-        tripts = project(self.sample[:, [0, 2, 1]])
-        plt.hexbin(tripts[:, 0], tripts[:, 1], mincnt=1, cmap=plt.cm.Blues_r)
-        # Leave some padding around the triangle for vertex labels
-        ax.set_xlim(-0.2, 1.2)
-        ax.set_ylim(-0.2, 1.2)
-        ax.axis('off')
-        return fig
+            # project and draw points
+            tripts = project(self.sample[:, [0, 2, 1]])
+            plt.hexbin(tripts[:, 0], tripts[:, 1],
+                       mincnt=1, cmap=plt.cm.Blues_r)
+            # Leave some padding around the triangle for vertex labels
+            ax.set_xlim(-0.2, 1.2)
+            ax.set_ylim(-0.2, 1.2)
+            ax.axis('off')
+            return fig
 
     def plot_histogram(self, names):
         """
@@ -124,23 +127,23 @@ class Posterior:
             matplotlib figure
         """
 
-        plt = import_plt()
-
-        names = names or self.names or ("C1", "C2")
-        points = self.sample[:, 2]
-        pr = (np.sum(points > 0.5) + 0.5 * np.sum(points == 0.5)) / len(points)
-        pl = 1 - pr
-        fig, ax = plt.subplots()
-        ax.grid(True)
-        ax.hist(points, 50, color="#34ccff")
-        ax.axis(xmin=0, xmax=1)
-        ax.text(0, 0, "\n\np({}) = {:.3f}".format(names[0], pl),
-                horizontalalignment='left', verticalalignment='top')
-        ax.text(1, 0, "\n\np({}) = {:.3f}".format(names[1], pr),
-                horizontalalignment='right', verticalalignment='top')
-        ax.get_yaxis().set_ticklabels([])
-        ax.axvline(x=0.5, color="#ffad2f", linewidth=2)
-        return fig
+        with seaborn_plt() as plt:
+            names = names or self.names or ("C1", "C2")
+            points = self.sample[:, 2]
+            pr = (np.sum(points > 0.5) + 0.5 * np.sum(points == 0.5)) \
+                / len(points)
+            pl = 1 - pr
+            fig, ax = plt.subplots()
+            ax.grid(True)
+            ax.hist(points, 50, color="#34ccff")
+            ax.axis(xmin=0, xmax=1)
+            ax.text(0, 0, "\n\np({}) = {:.3f}".format(names[0], pl),
+                    horizontalalignment='left', verticalalignment='top')
+            ax.text(1, 0, "\n\np({}) = {:.3f}".format(names[1], pr),
+                    horizontalalignment='right', verticalalignment='top')
+            ax.get_yaxis().set_ticklabels([])
+            ax.axvline(x=0.5, color="#ffad2f", linewidth=2)
+            return fig
 
 
 class Test:
@@ -166,7 +169,6 @@ class Test:
         Returns:
             np.array of shape (`nsamples`, 3)
         """
-        pass
 
     @classmethod
     def probs(cls, x, y, rope=0, *, nsamples=50000, **kwargs):

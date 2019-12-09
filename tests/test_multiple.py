@@ -194,3 +194,7 @@ class TwoOnMultipleTest(unittest.TestCase):
         two_on_multiple(x, y, 0.5, runs=10, plot=True, names=names)
         mockcall.assert_called_with(
             HierarchicalTest, x, y, 0.5, plot=True, runs=10, names=names)
+
+
+if __name__ == "__main__":
+    unittest.main()
