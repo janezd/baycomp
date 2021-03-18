@@ -60,7 +60,7 @@ class TestTest(TestTestBase):
         x = np.array([4, 2, 6])
         y = np.array([5, 7, 3])
         Test(x, y, 1, nsamples=3, foo=42)
-        mocksample.assert_called_with(x, y, 1, nsamples=3, foo=42)
+        mocksample.assert_called_with(x, y, 1, nsamples=3, foo=42, random_state=None)
         mockposterior.assert_called_with(mocksample.return_value)
 
     def test_probs(self):
