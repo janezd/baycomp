@@ -149,8 +149,8 @@ class Posterior:
 class Test:
     LEFT, ROPE, RIGHT = range(3)
 
-    def __new__(cls, x, y, rope=0, *, nsamples=50000, **kwargs):
-        return Posterior(cls.sample(x, y, rope, nsamples=nsamples, **kwargs))
+    def __new__(cls, x, y, rope=0, *, nsamples=50000, random_state=None, **kwargs):
+        return Posterior(cls.sample(x, y, rope, nsamples=nsamples, random_state=random_state, **kwargs))
 
     @classmethod
     def sample(cls, x, y, rope=0, nsamples=50000, **kwargs):
@@ -299,7 +299,7 @@ class SignedRankTest(Test):
 
     @classmethod
     # pylint: disable=arguments-differ
-    def sample(cls, x, y, rope=0, *, prior=0.5, nsamples=50000):
+    def sample(cls, x, y, rope=0, *, prior=0.5, nsamples=50000, random_state=None):
         def heaviside(a, thresh):
             return (a > thresh).astype(float) + 0.5 * (a == thresh).astype(float)
 
@@ -316,7 +316,8 @@ class SignedRankTest(Test):
             above_rope = heaviside(sums, 2 * rope)
             below_rope = heaviside(-sums, 2 * rope)
             samples = np.zeros((nsamples, 3))
-            for i, samp_weights in enumerate(np.random.dirichlet(weights, nsamples)):
+            _random_state = np.random.RandomState(random_state)
+            for i, samp_weights in enumerate(_random_state.dirichlet(weights, nsamples)):
                 prod_weights = np.outer(samp_weights, samp_weights)
                 samples[i, 0] = np.sum(prod_weights * below_rope)
                 samples[i, 2] = np.sum(prod_weights * above_rope)
@@ -327,7 +328,8 @@ class SignedRankTest(Test):
             sums, weights = diff_sums(x, y)
             above_0 = heaviside(sums, 0)
             samples = np.zeros((nsamples, 3))
-            for i, samp_weights in enumerate(np.random.dirichlet(weights, nsamples)):
+            _random_state = np.random.RandomState(random_state)
+            for i, samp_weights in enumerate(_random_state.dirichlet(weights, nsamples)):
                 prod_weights = np.outer(samp_weights, samp_weights)
                 samples[i, 2] = np.sum(prod_weights * above_0)
             samples[:, 0] = -samples[:, 2] + 1
@@ -472,6 +474,7 @@ def two_on_multiple(x, y, rope=0, *, runs=1, names=None, plot=False, **kwargs):
         nsamples (int): the number of samples (default: 50000)
         plot (bool): if `True`, the function also return a histogram (default: False)
         names (tuple of str): names of classifiers (ignored if `plot` is `False`)
+        random_state (int or None): random seed for drawing the samples, if None a random seed is picked
 
     Returns:
         `(p_left, p_rope, p_right)` if `rope > 0`; otherwise `(p_left, p_right)`.
