@@ -474,6 +474,7 @@ def two_on_multiple(x, y, rope=0, *, runs=1, names=None, plot=False, **kwargs):
         nsamples (int): the number of samples (default: 50000)
         plot (bool): if `True`, the function also return a histogram (default: False)
         names (tuple of str): names of classifiers (ignored if `plot` is `False`)
+        random_state (int or None): random seed for drawing the samples, if None a random seed is picked
 
     Returns:
         `(p_left, p_rope, p_right)` if `rope > 0`; otherwise `(p_left, p_right)`.
