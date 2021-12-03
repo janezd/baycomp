@@ -108,14 +108,14 @@ class TestTest(TestTestBase):
 
 
 class SignTestTest(unittest.TestCase):
-    @patch("numpy.random.dirichlet")
-    def test_sample(self, mockdirichlet):
+    @patch("numpy.random.RandomState")
+    def test_sample(self, mockrandomstate):
         x = np.array([15, 16, 17, 24, 11, 12, 13, 14])
         y = np.array([10, 13, 15, 24, 15, 82, 83, 84])
         # diff =      -5  -3  -2   0  4   70  70  70
 
         def assert_dirichlet(s, nsamples=50000):
-            alpha, ns = mockdirichlet.call_args[0]
+            alpha, ns = mockrandomstate.mock_calls[-1].args
             np.testing.assert_almost_equal(alpha, np.array(s) + 0.0001)
             self.assertEqual(ns, nsamples)
 
