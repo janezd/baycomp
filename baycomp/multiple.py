@@ -268,12 +268,14 @@ class SignTest(Test):
 
     @classmethod
     # pylint: disable=arguments-differ
-    def sample(cls, x, y, rope=0, *, prior=1, nsamples=50000):
+    def sample(cls, x, y, rope=0, *, prior=1, nsamples=50000, random_state=None):
         if isinstance(prior, tuple):
             prior, prior_place = prior
         else:
             prior_place = cls.ROPE
         check_args(x, y, rope, prior, nsamples)
+
+        _random_state = np.random.RandomState(random_state)
 
         diff = y - x
         nleft = sum(diff < -rope)
@@ -282,7 +284,7 @@ class SignTest(Test):
         alpha = np.array([nleft, nrope, nright], dtype=float)
         alpha += 0.0001  # for numerical stability
         alpha[prior_place] += prior
-        return np.random.dirichlet(alpha, nsamples)
+        return _random_state.dirichlet(alpha, nsamples)
 
 
 class SignedRankTest(Test):
@@ -357,12 +359,15 @@ class HierarchicalTest(Test):
     def sample(cls, x, y, rope, *, runs=1,
                lower_alpha=1, upper_alpha=2,
                lower_beta=0.01, upper_beta=0.1,
-               upper_sigma=1000, chains=4, nsamples=None):
+               upper_sigma=1000, chains=4, nsamples=None,
+               random_state=None):
         try:
             import pystan
         except ImportError:
             raise ImportError("Hierarchical model requires 'pystan'; "
                               "install it by 'pip install pystan'")
+
+        _random_state = np.random.RandomState(random_state)
 
         LAST_SAMPLE_PICKLE = "last-sample.pickle"
         STAN_MODEL_PICKLE = "stored-stan-model.pickle"
@@ -401,7 +406,7 @@ class HierarchicalTest(Test):
             nscores_2 = nscores // 2
             for sample in diff:
                 if np.var(sample) == 0:
-                    sample[:nscores_2] = np.random.uniform(-rope, rope, nscores_2)
+                    sample[:nscores_2] = _random_state.uniform(-rope, rope, nscores_2)
                     sample[nscores_2:] = -sample[:nscores_2]
 
             std_within = np.mean(np.std(diff, axis=1))  # may be different from std_diff!
