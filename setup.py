@@ -24,6 +24,9 @@ setup(
         'matplotlib >= 2.1.2',
         'numpy >= 1.13.1',
         'scipy >= 0.19.1'],
+    extra_requires=[
+        'pystan >= 3.4.0'
+    ],
     python_requires='>=3',
     package_data={
         'baycomp': ['hierarchical-t-test.stan']}

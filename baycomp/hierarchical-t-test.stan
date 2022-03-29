@@ -49,22 +49,22 @@
     real detM;
 
     //The determinant of M is analytically known
-    detM <- (1+(Nsamples-1)*rho)*(1-rho)^(Nsamples-1);
+    detM = (1+(Nsamples-1)*rho)*(1-rho)^(Nsamples-1);
 
     //build H and invM. They do not depend on the data.
     for (j in 1:Nsamples){
-      zeroMeanVec[j]<-0;
-      H[j]<-1;
+      zeroMeanVec[j] = 0;
+      H[j] = 1;
       for (i in 1:Nsamples){
         if (j==i)
-          invM[j,i]<- (1 + (Nsamples-2)*rho)*pow((1-rho),Nsamples-2);
+          invM[j,i] = (1 + (Nsamples-2)*rho)*pow((1-rho),Nsamples-2);
         else
-          invM[j,i]<- -rho * pow((1-rho),Nsamples-2);
+          invM[j,i] = -rho * pow((1-rho),Nsamples-2);
         }
     }
     /*at this point invM contains the adjugate of M.
     we  divide it by det(M) to obtain the inverse of M.*/
-    invM <-invM/detM;
+    invM = invM/detM;
   }
 
   parameters {
@@ -109,21 +109,21 @@
     vector[q] logLik;
 
     //degrees of freedom
-    nu <- nuMinusOne + 1 ;
+    nu = nuMinusOne + 1 ;
 
     //1 over the variance of each data set
-    oneOverSigma2 <- rep_vector(1, q) ./ sigma;
-    oneOverSigma2 <- oneOverSigma2 ./ sigma;
+    oneOverSigma2 = rep_vector(1, q) ./ sigma;
+    oneOverSigma2 = oneOverSigma2 ./ sigma;
 
     /*the data (x) minus a matrix done as follows:
     the delta vector (of lenght q) pasted side by side Nsamples times*/
-    diff <- x - rep_matrix(delta,Nsamples);
+    diff = x - rep_matrix(delta,Nsamples);
 
     //efficient matrix computation of the likelihood.
-    diagQuad <- diagonal (quad_form (invM,diff'));
-    logDetSigma <- 2*Nsamples*log(sigma) + log(detM) ;
-    logLik <- -0.5 * logDetSigma - 0.5*Nsamples*log(6.283);
-    logLik <- logLik - 0.5 * oneOverSigma2 .* diagQuad;
+    diagQuad = diagonal (quad_form (invM,diff'));
+    logDetSigma = 2*Nsamples*log(sigma) + log(detM) ;
+    logLik = -0.5 * logDetSigma - 0.5*Nsamples*log(6.283);
+    logLik = logLik - 0.5 * oneOverSigma2 .* diagQuad;
 
   }
 
@@ -139,5 +139,5 @@
     delta ~ student_t(nu, delta0, std0);
 
     //logLik is computed in the previous block
-    increment_log_prob(sum(logLik));
+    target += sum(logLik);
   }
