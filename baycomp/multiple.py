@@ -359,18 +359,17 @@ class HierarchicalTest(Test):
     def sample(cls, x, y, rope, *, runs=1,
                lower_alpha=1, upper_alpha=2,
                lower_beta=0.01, upper_beta=0.1,
-               upper_sigma=1000, chains=4, nsamples=None,
+               upper_sigma=1000, chains=4, nsamples=10000,
                random_state=None):
         try:
-            import pystan
+            import stan
         except ImportError:
-            raise ImportError("Hierarchical model requires 'pystan'; "
-                              "install it by 'pip install pystan'")
+            raise ImportError("Hierarchical model requires 'pystan >= 3.4.0'; "
+                              "install it e.g. by 'pip install pystan==3.4.0'")
 
         _random_state = np.random.RandomState(random_state)
 
         LAST_SAMPLE_PICKLE = "last-sample.pickle"
-        STAN_MODEL_PICKLE = "stored-stan-model.pickle"
         stan_file = os.path.join(os.path.split(__file__)[0], "hierarchical-t-test.stan")
 
         args_signature = (
@@ -423,15 +422,7 @@ class HierarchicalTest(Test):
                 std0Low=0, std0Hi=std_among * upper_sigma
             )
 
-        def get_stan_model(model_file):
-            stan_model = try_unpickle(STAN_MODEL_PICKLE)
-            if stan_model is None:
-                model_code = open(model_file).read()
-                stan_model = pystan.StanModel(model_code=model_code)
-                try_pickle(stan_model, STAN_MODEL_PICKLE)
-            return stan_model
-
-        def run_stan(diff):
+        def run_stan(diff, **kwargs):
             stan_data = prepare_stan_data(diff)
 
             # check if the last pickled result can be reused
@@ -439,17 +430,18 @@ class HierarchicalTest(Test):
             if cached is not None and cached[0] == args_signature:
                 return cached[1]
 
-            model = get_stan_model(stan_file)
-            fit = model.sampling(data=stan_data, chains=chains)
-            results = fit.extract(permuted=True)
-            mu = results["delta0"]
-            stdh = results["std0"]
-            nu = results["nu"]
+            program_code = open(stan_file).read()
+            model: stan.model.Model = stan.build(program_code, data=stan_data)
+            fit: stan.fit.Fit = model.sample(**kwargs)
+
+            mu = fit["delta0"][0]
+            stdh = fit["std0"][0]
+            nu = fit["nu"][0]
             try_pickle((args_signature, (mu, stdh, nu)), LAST_SAMPLE_PICKLE)
             return mu, stdh, nu
 
         rope, diff = scaled_data(x, y, rope)
-        mu, stdh, nu = run_stan(diff)
+        mu, stdh, nu = run_stan(diff, num_samples=nsamples, num_chains=chains)
         samples = np.empty((len(nu), 3))
         for mui, std, df, sample_row in zip(mu, stdh, nu, samples):
             sample_row[2] = 1 - stats.t.cdf(rope, df, mui, std)
