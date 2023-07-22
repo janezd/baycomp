@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
     
 setup(
     name='baycomp',
-    version='1.0.2',
+    version='1.0.3',
     url='https://github.com/janezd/baycomp.git',
     author='J. Demsar, A. Benavoli, G. Corani',
     author_email='janez.demsar@fri.uni-lj.si',
