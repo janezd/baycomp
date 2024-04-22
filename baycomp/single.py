@@ -226,7 +226,6 @@ def two_on_single(x, y, rope=0, runs=1, *, names=None, plot=False):
         y (np.array): a vector of scores for the second model
         rope (float): the width of the region of practical equivalence (default: 0)
         runs (int): the number of repetitions of cross validation (default: 1)
-        nsamples (int): the number of samples (default: 50000)
         plot (bool): if `True`, the function also return a histogram (default: False)
         names (tuple of str): names of classifiers (ignored if `plot` is `False`)
 
